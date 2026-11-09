@@ -119,8 +119,134 @@ http://localhost:8080
 
 Hibernate automatically manages the database schema using the configured JPA settings.
 
-## API Documentation
+API Documentation
 
 Base URL:
 
-```text
+http://localhost:8080
+
+All endpoints below use the HTTP GET method and return JSON responses.
+
+Method
+
+Endpoint
+
+Description
+
+GET
+
+/api/astronauts
+
+Retrieves all astronauts.
+
+GET
+
+/api/status
+
+Retrieves the monitoring status of all astronauts.
+
+GET
+
+/api/astronauts/{astronautId}/status
+
+Retrieves all available indicators for a specific astronaut.
+
+GET
+
+/api/astronauts/{astronautId}/indicators/{indicatorId}
+
+Retrieves a specific indicator and its measurement history.
+
+Example Requests
+
+Retrieve all astronauts:
+
+GET http://localhost:8080/api/astronauts
+
+Retrieve the general status:
+
+GET http://localhost:8080/api/status
+
+Retrieve an astronaut's health status:
+
+GET http://localhost:8080/api/astronauts/1/status
+
+Retrieve a specific indicator:
+
+GET http://localhost:8080/api/astronauts/1/indicators/1
+
+Replace the IDs with actual IDs returned by the API.
+
+Frontend Integration
+
+The React frontend should communicate with this backend using HTTP requests.
+
+Example using JavaScript Fetch API:
+
+const response = await fetch(
+  "http://localhost:8080/api/astronauts/1/status"
+);
+
+const data = await response.json();
+
+console.log(data);
+
+The exact response structure should be determined from the actual API responses. Use Postman to inspect the returned JSON when implementing frontend components.
+
+Database
+
+The application uses PostgreSQL to store:
+
+Astronauts — astronaut records.
+
+Indicators — available health indicators and their configuration.
+
+Measurements — individual readings, timestamps, and associated astronauts.
+
+Each measurement is associated with an astronaut and an indicator.
+
+Measurement history is stored in the database, allowing the frontend to retrieve previous readings.
+
+Automatic Data Updates
+
+The application automatically generates demonstration measurements:
+
+An initial measurement generation is performed after application startup.
+
+New measurements are generated every 2 minutes.
+
+Measurements are stored in PostgreSQL.
+
+Each astronaut has separate measurement records.
+
+The generated values are intended for demonstration and testing purposes only. They are not real medical measurements or medically validated astronaut health thresholds.
+
+Image Dataset
+
+The application supports local image dataset integration.
+
+Place image files in the configured dataset directory:
+
+./data/images
+
+Supported image files are selected from the available local dataset.
+
+Images are exposed through the /media/ URL path.
+
+The application does not generate artificial medical images when the dataset is unavailable.
+
+Important Notes
+
+This repository contains only the Java Spring Boot backend.
+
+The Python backend and React frontend are separate project components.
+
+PostgreSQL must be running before starting the application.
+
+The backend uses demonstration data for automatic measurement generation.
+
+The application is a hackathon prototype and is not intended for real medical diagnosis or clinical use.
+
+License
+
+This project was developed as part of a hackathon.
