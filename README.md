@@ -1,252 +1,141 @@
-# SpaceMonitor — Astronaut Health Monitoring Backend
+# SpaceMonitor — Java Health Monitoring Backend
 
-## Overview
+Java Spring Boot backend for the SpaceMonitor astronaut health monitoring application.
 
-SpaceMonitor is a Java-based backend application designed for an astronaut health monitoring system during space missions.
+The mobile frontend stores the local user profile (name, surname, height, weight, day streak) and local activity logs on the device. This backend stores monitoring indicators, measurement history, and configurable status ranges in PostgreSQL. The separate Python backend is not called by this service.
 
-The application collects, stores, and provides access to astronaut health indicators through a REST API. It uses PostgreSQL for data persistence and Spring Boot for backend functionality.
+## Tech stack
 
-This repository contains the Java backend component of the project. The frontend and Python backend are developed separately.
+- Java 25
+- Spring Boot 4.1.2
+- Spring Web MVC
+- Spring Data JPA / Hibernate
+- PostgreSQL
+- Maven Wrapper
 
-## Tech Stack
+## Responsibilities
 
-- **Java 25**
-- **Spring Boot 4.1.2**
-- **Spring Data JPA**
-- **Hibernate**
-- **PostgreSQL**
-- **Maven**
-- **REST API**
+- Provide indicator metadata and latest measurements.
+- Provide measurement history.
+- Calculate an indicator status from ranges stored in `graded_values`.
+- Generate demonstration measurements every two minutes.
+- Serve local image dataset files under `/media/`.
 
-## Features
-
-- Management of astronaut records.
-- Health indicator data retrieval.
-- Measurement history storage.
-- Individual astronaut health status.
-- General status retrieval for all astronauts.
-- Automatic measurement generation every 2 minutes.
-- Support for numeric, paired, and image-based indicators.
-- Local image dataset integration.
-
-## Architecture
-
-The application consists of several main components:
-
-- **API Layer** — handles HTTP requests and returns JSON responses.
-- **Service Layer** — processes monitoring data and application logic.
-- **Repository Layer** — communicates with the PostgreSQL database.
-- **Database** — stores astronauts, indicators, and measurements.
-- **Scheduler** — periodically generates demonstration measurements.
-
-The Java backend communicates with the React frontend through HTTP requests. It does not directly communicate with the separate Python backend.
+The `astronauts` row is retained as an internal technical owner because existing measurements have a foreign key to it. It is not the user's profile and is not exposed through the API. The initializer keeps exactly one such row and reassigns existing measurements to it if duplicate astronaut rows are found.
 
 ## Requirements
 
-Before running the application, make sure you have installed:
+- JDK 25
+- PostgreSQL
+- Git (optional)
 
-- Java 25 or compatible JDK.
-- PostgreSQL.
-- Maven (or use the included Maven Wrapper).
-- Git (optional).
+## Setup
 
-## Installation and Setup
-
-### 1. Clone the repository
+### 1. Clone
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/SpaceMonitor.git
+git clone https://github.com/Chinokami/SpaceMonitor.git
 cd SpaceMonitor
 ```
 
 ### 2. Create the database
 
-Open PostgreSQL and create a database named:
-
 ```sql
 CREATE DATABASE space_monitor;
 ```
 
-### 3. Configure database connection
+### 3. Configure PostgreSQL
 
-Open:
-
-`src/main/resources/application.properties`
-
-The default configuration uses:
+The default connection is configured in `src/main/resources/application.properties`:
 
 ```properties
 spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/space_monitor}
 spring.datasource.username=${DB_USERNAME:postgres}
-spring.datasource.password=${DB_PASSWORD:}
+spring.datasource.password=${DB_PASSWORD}
 ```
 
-Set your PostgreSQL password using an environment variable.
-
-**Windows PowerShell:**
+Set the password in PowerShell before starting the application:
 
 ```powershell
 $env:DB_PASSWORD="YOUR_POSTGRES_PASSWORD"
 ```
 
-Optional environment variables:
+Optional environment variables: `DB_URL`, `DB_USERNAME`, `CORS_ALLOWED_ORIGINS`, `IMAGE_DATASET_DIRECTORY`.
 
-- `DB_URL` — PostgreSQL connection URL.
-- `DB_USERNAME` — PostgreSQL username.
-- `DB_PASSWORD` — PostgreSQL password.
-- `CORS_ALLOWED_ORIGINS` — allowed frontend origins.
-- `IMAGE_DATASET_DIRECTORY` — local image dataset directory.
+### 4. Start
 
-### 4. Run the application
-
-On Windows:
+Windows:
 
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-On Linux or macOS:
+Linux/macOS:
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-The backend runs at:
+The API is available at `http://localhost:8080`.
 
-```text
-http://localhost:8080
+Hibernate creates/updates entity tables, including `graded_values`. It does not automatically remove old tables from an existing database. If upgrading the previous version, the old `logs` table may remain in PostgreSQL, but this version no longer reads or writes it.
+
+## API
+
+Base URL: `http://localhost:8080`
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/indicators` | Returns all indicators, latest measurements, history, and calculated statuses. |
+| GET | `/api/indicators/{indicatorId}` | Returns one indicator, its latest measurement, history, and status. |
+| GET | `/api/indicators/{indicatorId}/status` | Same response; explicit endpoint for frontend status requests. |
+
+Example:
+
+```http
+GET http://localhost:8080/api/indicators/1/status
 ```
 
-Hibernate automatically manages the database schema using the configured JPA settings.
+The response contains `indicatorId`, `code`, `name`, `unit`, `description`, `dataType`, `status`, `latestMeasurement`, and `history`.
 
-API Documentation
+`status` is one of:
 
-Base URL:
+- `BAD`
+- `NORMAL`
+- `GOOD`
+- `UNKNOWN` — no measurement exists, the indicator is image-based, or no configured interval matches the latest value.
 
-http://localhost:8080
+## `graded_values` table
 
-All endpoints below use the HTTP GET method and return JSON responses.
+One row represents one value interval for one indicator and one status:
 
-Method
+| Column | Meaning |
+|---|---|
+| `id` | Primary key |
+| `indicator_id` | Related indicator |
+| `status` | `BAD`, `NORMAL`, or `GOOD` |
+| `min_value`, `max_value` | Inclusive lower and upper bounds for the primary value |
+| `min_secondary_value`, `max_secondary_value` | Optional bounds for a paired value, such as diastolic blood pressure |
 
-Endpoint
+Multiple intervals for the same indicator/status are allowed. This is needed when both unusually low and unusually high values should be classified as `BAD`.
 
-Description
+The application intentionally does not invent medical thresholds. Until the team configures intervals, the API returns `UNKNOWN` for numeric indicators. Use `database/graded_values_template.sql` as a starting point after agreeing on the correct ranges. These values are application configuration, not medically validated guidance.
 
-GET
+## Database tables
 
-/api/astronauts
+- `astronauts` — one internal technical record used as the owner of measurements; not the user's local profile.
+- `indicators` — indicator definitions and simulation settings.
+- `measurements` — readings and timestamps.
+- `graded_values` — configurable status intervals.
 
-Retrieves all astronauts.
+The mobile frontend stores profile information and activity logs locally. There are no profile, streak, or log endpoints in this Java backend.
 
-GET
+## Demonstration data
 
-/api/status
+An initial set of measurements is generated after startup. Additional demonstration measurements are generated every two minutes and saved in PostgreSQL. The values are simulated and must not be treated as real astronaut measurements or used for diagnosis or treatment.
 
-Retrieves the monitoring status of all astronauts.
+Images are read from `./data/images` by default and served under `/media/`. Set `IMAGE_DATASET_DIRECTORY` to use another directory.
 
-GET
+## CORS
 
-/api/astronauts/{astronautId}/status
-
-Retrieves all available indicators for a specific astronaut.
-
-GET
-
-/api/astronauts/{astronautId}/indicators/{indicatorId}
-
-Retrieves a specific indicator and its measurement history.
-
-Example Requests
-
-Retrieve all astronauts:
-
-GET http://localhost:8080/api/astronauts
-
-Retrieve the general status:
-
-GET http://localhost:8080/api/status
-
-Retrieve an astronaut's health status:
-
-GET http://localhost:8080/api/astronauts/1/status
-
-Retrieve a specific indicator:
-
-GET http://localhost:8080/api/astronauts/1/indicators/1
-
-Replace the IDs with actual IDs returned by the API.
-
-Frontend Integration
-
-The React frontend should communicate with this backend using HTTP requests.
-
-Example using JavaScript Fetch API:
-
-const response = await fetch(
-  "http://localhost:8080/api/astronauts/1/status"
-);
-
-const data = await response.json();
-
-console.log(data);
-
-The exact response structure should be determined from the actual API responses. Use Postman to inspect the returned JSON when implementing frontend components.
-
-Database
-
-The application uses PostgreSQL to store:
-
-Astronauts — astronaut records.
-
-Indicators — available health indicators and their configuration.
-
-Measurements — individual readings, timestamps, and associated astronauts.
-
-Each measurement is associated with an astronaut and an indicator.
-
-Measurement history is stored in the database, allowing the frontend to retrieve previous readings.
-
-Automatic Data Updates
-
-The application automatically generates demonstration measurements:
-
-An initial measurement generation is performed after application startup.
-
-New measurements are generated every 2 minutes.
-
-Measurements are stored in PostgreSQL.
-
-Each astronaut has separate measurement records.
-
-The generated values are intended for demonstration and testing purposes only. They are not real medical measurements or medically validated astronaut health thresholds.
-
-Image Dataset
-
-The application supports local image dataset integration.
-
-Place image files in the configured dataset directory:
-
-./data/images
-
-Supported image files are selected from the available local dataset.
-
-Images are exposed through the /media/ URL path.
-
-The application does not generate artificial medical images when the dataset is unavailable.
-
-Important Notes
-
-This repository contains only the Java Spring Boot backend.
-
-The Python backend and React frontend are separate project components.
-
-PostgreSQL must be running before starting the application.
-
-The backend uses demonstration data for automatic measurement generation.
-
-The application is a hackathon prototype and is not intended for real medical diagnosis or clinical use.
-
-License
-
-This project was developed as part of a hackathon.
+Allowed origins are configured through `CORS_ALLOWED_ORIGINS`. The default values are `http://localhost:5173` and `http://localhost:3000`.

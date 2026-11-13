@@ -1,7 +1,6 @@
 package com.devda.spacemonitor.api;
 
-import com.devda.spacemonitor.api.dto.*;
-import com.devda.spacemonitor.astronaut.AstronautRepository;
+import com.devda.spacemonitor.api.dto.IndicatorStatusDto;
 import com.devda.spacemonitor.service.MonitoringService;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -10,35 +9,26 @@ import java.util.List;
 @RequestMapping("/api")
 public class MonitoringController {
     private final MonitoringService monitoringService;
-    private final AstronautRepository astronautRepository;
 
-    public MonitoringController(MonitoringService monitoringService,
-                                AstronautRepository astronautRepository) {
+    public MonitoringController(MonitoringService monitoringService) {
         this.monitoringService = monitoringService;
-        this.astronautRepository = astronautRepository;
     }
 
-    @GetMapping("/astronauts")
-    public List<AstronautSummary> getAstronauts() {
-        return astronautRepository.findAll().stream()
-                .map(a -> new AstronautSummary(a.getId(), a.getName())).toList();
+    /* Returns all available indicators and their latest measurements. */
+    @GetMapping("/indicators")
+    public List<IndicatorStatusDto> getIndicators() {
+        return monitoringService.getAllIndicators();
     }
 
-    @GetMapping("/astronauts/{astronautId}/indicators/{indicatorId}")
-    public IndicatorInfoDto getIndicatorInfo(@PathVariable Long astronautId,
-                                             @PathVariable Long indicatorId) {
-        return monitoringService.getIndicatorInfo(astronautId, indicatorId);
+    /* Returns an indicator, its history, and the status calculated from graded_values. */
+    @GetMapping("/indicators/{indicatorId}/status")
+    public IndicatorStatusDto getIndicatorStatus(@PathVariable Long indicatorId) {
+        return monitoringService.getIndicatorStatus(indicatorId);
     }
 
-    @GetMapping("/astronauts/{astronautId}/status")
-    public List<IndicatorInfoDto> getGeneralStatus(@PathVariable Long astronautId) {
-        return monitoringService.getGeneralStatus(astronautId);
+    /* Returns one indicator and its history (same response includes its status). */
+    @GetMapping("/indicators/{indicatorId}")
+    public IndicatorStatusDto getIndicator(@PathVariable Long indicatorId) {
+        return monitoringService.getIndicatorStatus(indicatorId);
     }
-
-    @GetMapping("/status")
-    public List<AstronautStatusDto> getGeneralStatusForAllAstronauts() {
-        return monitoringService.getGeneralStatusForAllAstronauts();
-    }
-
-    public record AstronautSummary(Long id, String name) {}
 }

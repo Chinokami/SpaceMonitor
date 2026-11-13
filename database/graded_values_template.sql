@@ -1,0 +1,24 @@
+-- SpaceMonitor: налаштування діапазонів статусів індикаторів.
+-- Таблицю graded_values створює Hibernate під час запуску застосунку.
+-- Перед додаванням діапазонів перевірте ID індикаторів:
+-- SELECT id, code, name, unit FROM indicators ORDER BY id;
+--
+-- Один рядок описує один інтервал одного статусу. Для BAD можна додати
+-- два рядки (наприклад, окремо для надто низьких і надто високих значень).
+-- Для парного індикатора BLOOD_PRESSURE заповнюйте також secondary-поля.
+-- Межі нижче НЕ задані навмисно: погодьте їх із командою/джерелом вимог.
+-- Не використовуйте ці демонстраційні дані для медичних рішень.
+--
+-- Приклад структури INSERT (замініть ID та межі на погоджені значення):
+-- INSERT INTO graded_values
+--     (indicator_id, status, min_value, max_value,
+--      min_secondary_value, max_secondary_value)
+-- VALUES
+--     (1, 'NORMAL', 60.0, 100.0, NULL, NULL);
+--
+-- Приклад для парного значення (систолічний + діастолічний тиск):
+-- INSERT INTO graded_values
+--     (indicator_id, status, min_value, max_value,
+--      min_secondary_value, max_secondary_value)
+-- VALUES
+--     (2, 'NORMAL', 90.0, 120.0, 60.0, 80.0);
